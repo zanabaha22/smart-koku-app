@@ -1,6 +1,6 @@
-streamlit
-pandas
-numpy
+import streamlit as st
+import pandas as pd
+import numpy as np
 # --- MOCK DATA (Data Contoh) ---
 # Data ini digunakan hanya untuk membuat aplikasi berfungsi tanpa Google Sheets
 def load_mock_data():
