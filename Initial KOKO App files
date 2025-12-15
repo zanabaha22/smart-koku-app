@@ -1,0 +1,150 @@
+streamlit
+pandas
+numpy
+gspreadimport streamlit as st
+import pandas as pd
+import numpy as np
+
+# --- MOCK DATA (Data Contoh) ---
+# Data ini digunakan hanya untuk membuat aplikasi berfungsi tanpa Google Sheets
+def load_mock_data():
+    data = {
+        'Nama Penuh': ['Ahmad Bin Ali', 'Siti Nurhaliza', 'Raju A/L Muthu', 'Lim Mei Ling'],
+        'Tingkatan': ['4', '5', '3', '4'],
+        'Jantina': ['Lelaki', 'Perempuan', 'Lelaki', 'Perempuan'],
+        'Kelab/Persatuan': ['Catur', 'Sains & Matematik', 'Bahasa Melayu', 'Robotik'],
+        'Sukan/Permainan': ['Bola Sepak', 'Badminton', 'Tenis', 'Bola Keranjang'],
+        'Unit Beruniform': ['Kadet Polis', 'Pengakap', 'Bulan Sabit Merah', 'Puteri Islam'],
+        'Mata Merit': [85, 92, 70, 95]
+    }
+    df = pd.DataFrame(data)
+    return df
+
+# Initialize session state for data storage
+if 'df_koko' not in st.session_state:
+    st.session_state.df_koko = load_mock_data()
+
+# --- Fungsi Utama Aplikasi ---
+
+st.set_page_config(layout="wide", page_title="Sistem Pengurusan KOKO (Mock)")
+
+def main_dashboard():
+    st.title("📊 Dashboard Kokurikulum Sekolah")
+    df = st.session_state.df_koko
+
+    # 1. Statistik Keseluruhan
+    col1, col2, col3 = st.columns(3)
+    
+    total_students = len(df)
+    
+    # Kelab yang paling popular
+    popular_club = df['Kelab/Persatuan'].mode()[0] if not df['Kelab/Persatuan'].empty else 'Tiada'
+    
+    # Purata Merit
+    avg_merit = df['Mata Merit'].mean() if total_students > 0 else 0
+
+    with col1:
+        st.metric(label="Jumlah Pelajar Berdaftar", value=total_students)
+    with col2:
+        st.metric(label="Purata Mata Merit", value=f"{avg_merit:.1f}")
+    with col3:
+        st.metric(label="Kelab Paling Popular", value=popular_club)
+
+    st.markdown("---")
+    
+    # 2. Carta & Analisis
+    st.subheader("Analisis Pendaftaran Mengikut Tingkatan")
+    tingkatan_counts = df['Tingkatan'].value_counts().sort_index()
+    st.bar_chart(tingkatan_counts)
+
+    st.subheader("Analisis Mata Merit Mengikut Tingkatan")
+    merit_by_tingkatan = df.groupby('Tingkatan')['Mata Merit'].mean().reset_index()
+    st.bar_chart(merit_by_tingkatan, x='Tingkatan', y='Mata Merit')
+    
+    st.subheader("Data Mentah Pelajar")
+    st.dataframe(df)
+
+def registration_form():
+    st.title("📝 Borang Pendaftaran Kokurikulum")
+    
+    with st.form("koko_form"):
+        st.subheader("Maklumat Pelajar")
+        nama = st.text_input("Nama Penuh", key="nama")
+        tingkatan = st.selectbox("Tingkatan", options=['1', '2', '3', '4', '5'], key="tingkatan")
+        jantina = st.radio("Jantina", options=['Lelaki', 'Perempuan'], key="jantina")
+
+        st.subheader("Pilihan Kokurikulum")
+        
+        # Pilihan haruslah unik
+        pilihan_kelab = st.selectbox("Kelab/Persatuan", options=['Pilih', 'Catur', 'Sains & Matematik', 'Bahasa Melayu', 'Robotik', 'Inovasi'], key="kelab")
+        pilihan_sukan = st.selectbox("Sukan/Permainan", options=['Pilih', 'Bola Sepak', 'Badminton', 'Tenis', 'Bola Keranjang', 'Hoki'], key="sukan")
+        pilihan_uniform = st.selectbox("Unit Beruniform", options=['Pilih', 'Kadet Polis', 'Pengakap', 'Bulan Sabit Merah', 'Puteri Islam', 'St. John Ambulans'], key="uniform")
+        
+        merit_awal = st.number_input("Mata Merit Awal (Isi 0 jika tiada)", min_value=0, max_value=100, value=0)
+
+        submitted = st.form_submit_button("Daftar Sekarang")
+        
+        if submitted:
+            if nama and pilihan_kelab != 'Pilih' and pilihan_sukan != 'Pilih' and pilihan_uniform != 'Pilih':
+                # Tambah data baru ke DataFrame
+                new_data = pd.DataFrame([{
+                    'Nama Penuh': nama,
+                    'Tingkatan': tingkatan,
+                    'Jantina': jantina,
+                    'Kelab/Persatuan': pilihan_kelab,
+                    'Sukan/Permainan': pilihan_sukan,
+                    'Unit Beruniform': pilihan_uniform,
+                    'Mata Merit': merit_awal
+                }])
+                
+                st.session_state.df_koko = pd.concat([st.session_state.df_koko, new_data], ignore_index=True)
+                st.success(f"Pendaftaran untuk {nama} berjaya! Data sementara telah disimpan.")
+                # Reset form
+                st.session_state.nama = ""
+                st.experimental_rerun()
+            else:
+                st.error("Sila isi Nama Penuh dan buat semua 3 pilihan Kokurikulum.")
+
+def certificate_generator():
+    st.title("📜 Jana Sijil Penghargaan")
+    
+    df = st.session_state.df_koko
+    student_names = df['Nama Penuh'].unique()
+    
+    selected_student = st.selectbox("Pilih Pelajar", options=student_names)
+    
+    if selected_student:
+        student_data = df[df['Nama Penuh'] == selected_student].iloc[0]
+        
+        st.subheader(f"Sijil Penghargaan Kokurikulum")
+        st.markdown("---")
+        
+        st.markdown(f"Dengan ini disahkan bahawa:")
+        st.markdown(f"## **{student_data['Nama Penuh'].upper()}**")
+        st.markdown(f"Tingkatan: **{student_data['Tingkatan']}**")
+        st.markdown(f"Telah menunjukkan prestasi cemerlang dalam bidang kokurikulum.")
+        st.markdown(f"")
+        st.markdown(f"**Pencapaian Utama:**")
+        st.markdown(f"* Kelab/Persatuan: {student_data['Kelab/Persatuan']}")
+        st.markdown(f"* Sukan/Permainan: {student_data['Sukan/Permainan']}")
+        st.markdown(f"* Unit Beruniform: {student_data['Unit Beruniform']}")
+        st.markdown(f"* Jumlah Mata Merit: **{student_data['Mata Merit']}**")
+        
+        st.markdown("---")
+        st.download_button(
+            label="Muat Turun Sijil (PDF/PNG)",
+            data="Ini adalah sijil penghargaan...", # Dalam versi sebenar perlu guna library PDF
+            file_name=f"Sijil_{selected_student.replace(' ', '_')}.txt",
+            mime="text/plain"
+        )
+
+# --- Struktur Menu Navigasi ---
+st.sidebar.title("Navigasi Utama")
+menu = st.sidebar.radio("Pergi ke:", ['Dashboard', 'Pendaftaran', 'Jana Sijil'])
+
+if menu == 'Dashboard':
+    main_dashboard()
+elif menu == 'Pendaftaran':
+    registration_form()
+elif menu == 'Jana Sijil':
+    certificate_generator()
